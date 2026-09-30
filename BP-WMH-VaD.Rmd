@@ -1,0 +1,130 @@
+---
+title: "BP-WMH-VaD"
+author: "Seongwon Hwang"
+date: "30-09-2026"
+output:
+  html_document:
+    toc: true
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+has_ivs <- file.exists("data/RData/DBP_gwas_ivs.tsv") &&
+  file.exists("data/RData/WMH_DBP_gwas_iv.tsv")
+has_mr <- requireNamespace("MendelianRandomization", quietly = TRUE) &&
+  requireNamespace("dplyr", quietly = TRUE) &&
+  requireNamespace("readr", quietly = TRUE)
+has_plot <- requireNamespace("ggplot2", quietly = TRUE) &&
+  requireNamespace("cowplot", quietly = TRUE)
+```
+
+# Load packages and functions
+
+```{r}
+# Installed the following packages by running:
+# > conda env create -f env.yml
+# > conda activate BP-WMH-VaD
+
+suppressMessages({
+  if (requireNamespace("dplyr", quietly = TRUE)) library(dplyr)
+  if (requireNamespace("readr", quietly = TRUE)) library(readr)
+  if (requireNamespace("ggplot2", quietly = TRUE)) library(ggplot2)
+  if (requireNamespace("cowplot", quietly = TRUE)) library(cowplot)
+  if (requireNamespace("MendelianRandomization", quietly = TRUE)) {
+    library(MendelianRandomization)
+  }
+})
+```
+
+# Download data
+
+Public files (European WMH, FinnGen VaD, Bellenguez AD, 1000 Genomes EUR, PLINK):
+
+```{r, eval=FALSE}
+# python scripts/download_public_gwas.py
+```
+
+Evangelou et al. 2018 SBP, DBP, and pulse-pressure discovery GWAS are not on the GWAS Catalog FTP. Place `data/GWAS/Evangelou_30224653_{SBP,DBP,PP}.txt.gz` after requesting them from the corresponding authors / ICBP, or after downloading OpenGWAS `ieu-b-38` (SBP) and `ieu-b-39` (DBP). See `data/README.md`.
+
+Japanese BioBank Japan and JPSC-AD files:
+
+```{r, eval=FALSE}
+# powershell -File Japanese_BP_WMH_GWMR/scripts/download_gwas.ps1
+```
+
+Instrument-level tables for the paper MR are already in `data/RData/` and `Japanese_BP_WMH_GWMR/analysis_history/20260830_multi_exposure_jpsc_wmh/results/harmonized_instruments.tsv`. Rebuild from GWAS only if needed:
+
+```{r, eval=FALSE}
+# python scripts/build_gwas_ivs_1kg_clump.py --only all
+```
+
+# Primary two-step (APOE excluded)
+
+A priori *APOE* window, GRCh37 chr19:44,909,039-45,912,650. Primary estimator: multiplicative random-effects IVW. Scale: WMH SD per 10 mm Hg; VaD odds ratio per 10 mm Hg or per WMH SD.
+
+```{r twostep, eval=has_ivs && has_mr}
+apoe_lo <- 44909039
+apoe_hi <- 45912650
+in_apoe <- function(chrom, pos) {
+  ch <- gsub("^chr", "", as.character(chrom))
+  ch == "19" & !is.na(pos) & pos >= apoe_lo & pos <= apoe_hi
+}
+
+exp_iv <- readr::read_tsv("data/RData/DBP_gwas_ivs.tsv", show_col_types = FALSE)
+pair <- readr::read_tsv("data/RData/WMH_DBP_gwas_iv.tsv", show_col_types = FALSE)
+dat <- dplyr::left_join(
+  pair,
+  dplyr::transmute(exp_iv, snp, chrom_hg19, pos_hg19),
+  by = "snp"
+)
+dat <- dat[!in_apoe(dat$chrom_hg19, dat$pos_hg19), ]
+mr_in <- MendelianRandomization::mr_input(
+  bx = dat$bx, bxse = dat$bxse,
+  by = dat$beta, byse = dat$se, snps = dat$snp
+)
+ivw <- MendelianRandomization::mr_ivw(mr_in, model = "random")
+print(c(
+  n = nrow(dat),
+  beta_per_10mmHg = 10 * ivw$Estimate,
+  lo = 10 * ivw$CILower,
+  hi = 10 * ivw$CIUpper,
+  p = ivw$Pvalue
+))
+```
+
+Full two-step, Steiger, AD check, Japanese three-method MR, PP, residual path, 17q leave-out, and leave-one-out:
+
+```{r, eval=FALSE}
+# Rscript analysis_history/20260830_twostep_bp_wmh_vad_apoe_excl/scripts/run_twostep_bp_wmh_vad.R
+# Rscript scripts/run_jp_bp_wmh_three_methods.R
+# Rscript scripts/run_pp_primary_mr.R
+# python analysis_history/20260830_bp_indep_wmh_vad/scripts/lookup_wmh_iv_bp.py
+# Rscript analysis_history/20260830_bp_indep_wmh_vad/scripts/run_bp_indep_wmh_vad.R
+# python analysis_history/20260830_r13_bp_indep_wmh_vad_bryois/scripts/lookup_r13_vad.py
+# Rscript analysis_history/20260830_r13_bp_indep_wmh_vad_bryois/scripts/run_r13_mr.R
+# Rscript analysis_history/20260830_17q2131_h1h2_pleiotropy_ivw/scripts/01_ivw_with_without.R
+# Rscript analysis_history/20260915_loo_wmh_vad_apoe_excl/scripts/run_loo_wmh_vad_n16.R
+# Rscript analysis_history/20260915_path_robustness_loo_ad_overlap/scripts/run_path_robustness.R
+```
+
+# Figures
+
+Paper displays. Numbers are the locked estimates used in the manuscript.
+
+```{r figures, eval=has_plot, message=FALSE}
+dir.create("manuscript/figures", recursive = TRUE, showWarnings = FALSE)
+source("scripts/plot_main_figures_stroke_bp_wmh_vad.R")
+```
+
+```{r show-fig1, eval=has_plot, echo=FALSE, fig.cap="Figure 1. Study design."}
+knitr::include_graphics("manuscript/figures/Fig1_study_design.png")
+```
+
+```{r show-fig2, eval=has_plot, echo=FALSE, fig.cap="Figure 2. Primary MR."}
+knitr::include_graphics("manuscript/figures/Fig2_primary_MR.png")
+```
+
+```{r show-fig3, eval=has_plot, echo=FALSE, fig.cap="Figure S1. Residual WMH to VaD (FinnGen R13)."}
+knitr::include_graphics("manuscript/figures/Fig3_residual_WMH_VaD.png")
+```
