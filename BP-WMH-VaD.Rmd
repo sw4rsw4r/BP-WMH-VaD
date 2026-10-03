@@ -118,10 +118,6 @@ dir.create("manuscript/figures", recursive = TRUE, showWarnings = FALSE)
 source("scripts/plot_main_figures_stroke_bp_wmh_vad.R")
 ```
 
-```{r show-fig1, eval=has_plot, echo=FALSE, fig.cap="Figure 1. Study design."}
-knitr::include_graphics("manuscript/figures/Fig1_study_design.png")
-```
-
 ```{r show-fig2, eval=has_plot, echo=FALSE, fig.cap="Figure 2. Primary MR."}
 knitr::include_graphics("manuscript/figures/Fig2_primary_MR.png")
 ```
