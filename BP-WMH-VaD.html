@@ -373,7 +373,7 @@ excluded)</a></li>
 # &gt; conda env create -f env.yml
 # &gt; conda activate BP-WMH-VaD
 
-suppressMessages({
+suppressWarnings(suppressMessages({
   if (requireNamespace(&quot;dplyr&quot;, quietly = TRUE)) library(dplyr)
   if (requireNamespace(&quot;readr&quot;, quietly = TRUE)) library(readr)
   if (requireNamespace(&quot;ggplot2&quot;, quietly = TRUE)) library(ggplot2)
@@ -381,11 +381,7 @@ suppressMessages({
   if (requireNamespace(&quot;MendelianRandomization&quot;, quietly = TRUE)) {
     library(MendelianRandomization)
   }
-})</code></pre>
-<pre><code>## Warning: 패키지 &#39;dplyr&#39;는 R 버전 4.4.3에서 작성되었습니다</code></pre>
-<pre><code>## Warning: 패키지 &#39;readr&#39;는 R 버전 4.4.3에서 작성되었습니다</code></pre>
-<pre><code>## Warning: 패키지 &#39;ggplot2&#39;는 R 버전 4.4.3에서 작성되었습니다</code></pre>
-<pre><code>## Warning: 패키지 &#39;MendelianRandomization&#39;는 R 버전 4.4.3에서 작성되었습니다</code></pre>
+}))</code></pre>
 </div>
 <div id="download-data" class="section level1">
 <h1>Download data</h1>

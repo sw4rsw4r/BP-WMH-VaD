@@ -9,7 +9,8 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+Sys.setenv(LANGUAGE = "en")
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 has_ivs <- file.exists("data/RData/DBP_gwas_ivs.tsv") &&
   file.exists("data/RData/WMH_DBP_gwas_iv.tsv")
 has_mr <- requireNamespace("MendelianRandomization", quietly = TRUE) &&
@@ -26,7 +27,7 @@ has_plot <- requireNamespace("ggplot2", quietly = TRUE) &&
 # > conda env create -f env.yml
 # > conda activate BP-WMH-VaD
 
-suppressMessages({
+suppressWarnings(suppressMessages({
   if (requireNamespace("dplyr", quietly = TRUE)) library(dplyr)
   if (requireNamespace("readr", quietly = TRUE)) library(readr)
   if (requireNamespace("ggplot2", quietly = TRUE)) library(ggplot2)
@@ -34,7 +35,7 @@ suppressMessages({
   if (requireNamespace("MendelianRandomization", quietly = TRUE)) {
     library(MendelianRandomization)
   }
-})
+}))
 ```
 
 # Download data
